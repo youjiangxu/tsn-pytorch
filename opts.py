@@ -55,6 +55,9 @@ parser.add_argument('--gpus', nargs='+', type=int, default=None)
 parser.add_argument('--flow_prefix', default="", type=str)
 
 
+# ======================== add root_path =============================
+parser.add_argument('-s', '--sources', default='', type=str, metavar='PATH',
+                    help='the sources of the dataset')
 
 
 
