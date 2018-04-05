@@ -7,7 +7,7 @@ parser.add_argument('val_list', type=str)
 
 # ========================= Model Configs ==========================
 parser.add_argument('--arch', type=str, default="resnet101")
-parser.add_argument('--num_segments', type=int, default=3)
+parser.add_argument('--timesteps', type=int, default=3)
 parser.add_argument('--consensus_type', type=str, default='avg',
                     choices=['avg', 'max', 'topk', 'identity', 'rnn', 'cnn'])
 parser.add_argument('--k', type=int, default=3)

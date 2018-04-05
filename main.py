@@ -10,7 +10,7 @@ import torch.optim
 from torch.nn.utils import clip_grad_norm
 
 from dataset import TSNDataSet
-from models import TSN
+from seqvlad_models import SeqVLAD
 from transforms import *
 from opts import parser
 
@@ -30,9 +30,11 @@ def main():
     else:
         raise ValueError('Unknown dataset '+args.dataset)
 
-    model = TSN(num_class, args.num_segments, args.modality,
+    model = SeqVLAD(num_class, args.timesteps, args.modality,
                 base_model=args.arch,
                 consensus_type=args.consensus_type, dropout=args.dropout, partial_bn=not args.no_partialbn)
+
+    print(model)
 
     crop_size = model.crop_size
     scale_size = model.scale_size
@@ -69,7 +71,7 @@ def main():
         data_length = 5
 
     train_loader = torch.utils.data.DataLoader(
-        TSNDataSet(args.sources, args.train_list, num_segments=args.num_segments,
+        TSNDataSet(args.sources, args.train_list, timesteps=args.timesteps,
                    new_length=data_length,
                    modality=args.modality,
                    image_tmpl="image_{:05d}.jpg" if args.modality in ["RGB", "RGBDiff"] else args.flow_prefix+"{}_{:05d}.jpg",
@@ -83,7 +85,7 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(
-        TSNDataSet(args.sources, args.val_list, num_segments=args.num_segments,
+        TSNDataSet(args.sources, args.val_list, timesteps=args.timesteps,
                    new_length=data_length,
                    modality=args.modality,
                    image_tmpl="image_{:05d}.jpg" if args.modality in ["RGB", "RGBDiff"] else args.flow_prefix+"{}_{:05d}.jpg",
@@ -159,6 +161,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
         data_time.update(time.time() - end)
 
         target = target.cuda(async=True)
+        print('input size', input.size())
+        print('input size', input.size())
+
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 
