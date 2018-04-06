@@ -74,7 +74,7 @@ def main():
         TSNDataSet(args.sources, args.train_list, timesteps=args.timesteps,
                    new_length=data_length,
                    modality=args.modality,
-                   image_tmpl="image_{:05d}.jpg" if args.modality in ["RGB", "RGBDiff"] else args.flow_prefix+"{}_{:05d}.jpg",
+                   image_tmpl="image_{:05d}.jpg" if args.modality in ["RGB", "RGBDiff"] else args.flow_prefix+"{}_{:04d}.jpg",
                    transform=torchvision.transforms.Compose([
                        train_augmentation,
                        Stack(roll=args.arch == 'BNInception'),
@@ -88,7 +88,7 @@ def main():
         TSNDataSet(args.sources, args.val_list, timesteps=args.timesteps,
                    new_length=data_length,
                    modality=args.modality,
-                   image_tmpl="image_{:05d}.jpg" if args.modality in ["RGB", "RGBDiff"] else args.flow_prefix+"{}_{:05d}.jpg",
+                   image_tmpl="image_{:05d}.jpg" if args.modality in ["RGB", "RGBDiff"] else args.flow_prefix+"{}_{:04d}.jpg",
                    random_shift=False,
                    transform=torchvision.transforms.Compose([
                        GroupScale(int(scale_size)),
