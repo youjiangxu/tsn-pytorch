@@ -58,7 +58,11 @@ parser.add_argument('--flow_prefix', default="", type=str)
 # ======================== add root_path =============================
 parser.add_argument('-s', '--sources', default='', type=str, metavar='PATH',
                     help='the sources of the dataset')
+parser.add_argument('--num_centers', default=64, type=int, metavar='N',
+                    help='the number of centers for seqvlad')
 
+parser.add_argument('--redu_dim', default=512, type=int, metavar='N',
+                    help='redu channels for input feature maps for seqvlad')
 
 
 

@@ -30,10 +30,10 @@ def main():
     else:
         raise ValueError('Unknown dataset '+args.dataset)
 
-    model = SeqVLAD(num_class, args.timesteps, args.modality,
+    model = SeqVLAD(num_class, args.num_centers, args.modality,
+                args.timesteps, args.redu_dim,
                 base_model=args.arch,
                 consensus_type=args.consensus_type, dropout=args.dropout, partial_bn=not args.no_partialbn)
-
     print(model)
 
     crop_size = model.crop_size
@@ -157,13 +157,15 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
     end = time.time()
     for i, (input, target) in enumerate(train_loader):
+        # print('##### i:', i)
         # measure data loading time
         data_time.update(time.time() - end)
 
         target = target.cuda(async=True)
-        print('input size', input.size())
-        print('input size', input.size())
-
+        # print('input size ====>', input.size())
+        # print('input size', input.size())
+        # input = input.view(-1,3,224,224)
+        # print('input size ====>', input.size())
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
 

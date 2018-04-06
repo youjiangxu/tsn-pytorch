@@ -263,6 +263,7 @@ class Stack(object):
                 return np.concatenate([np.array(x)[:, :, ::-1] for x in img_group], axis=2)
             else:
                 return np.concatenate(img_group, axis=2)
+            
 
 
 class ToTorchFormatTensor(object):

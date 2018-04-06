@@ -109,10 +109,10 @@ class TSNDataSet(data.Dataset):
                 if p < record.num_frames:
                     p += 1
 
-        print('image,', len(images))
-        print('image 0', images[0])
+        #print('image,', len(images))
+        #print('image 0', images[0])
         process_data = self.transform(images)
-        print('process_data,', process_data.size())
+        #print('process_data,', process_data.size())
         return process_data, record.label
 
     def __len__(self):

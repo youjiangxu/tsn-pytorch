@@ -8,6 +8,7 @@ from torch.nn.init import normal, constant
 import collections
 class SeqVLAD(nn.Module):
     def __init__(self, num_class, num_centers, modality,
+                 timesteps=1, redu_dim=512,
                  base_model='resnet101', new_length=None,
                  consensus_type='avg', before_softmax=True,
                  dropout=0.8,
@@ -29,8 +30,8 @@ class SeqVLAD(nn.Module):
             self.new_length = new_length
 
 
-        self.redu_dim = 512
-        self.timesteps = 3
+        self.timesteps = timesteps
+        self.redu_dim = redu_dim
 
         print(("""
 Initializing SeqVLAD with base model: {}.
@@ -43,13 +44,9 @@ SeqVLAD Configurations:
         """.format(base_model, self.modality, self.num_centers, self.new_length, consensus_type, self.dropout)))
 
         self._prepare_base_model(base_model)
-
         self._add_seqvlad_layer(base_model)
-        print(self.base_model)
         self._add_classifier_layer(base_model, num_class)
         print(self.base_model)
-
-
         # feature_dim = self._prepare_tsn(num_class)
 
         if self.modality == 'Flow':
@@ -71,29 +68,48 @@ SeqVLAD Configurations:
             self.partialBN(True)
 
     def _add_seqvlad_layer(self, base_model):
-        print('seqvlad layer ...')
         if base_model == 'BNInception':
             # print( list(self.base_model.named_children())[:-2])
-            model = nn.Sequential(
-                        # *list(self.base_model.children())[:-2]
-                        collections.OrderedDict(list(self.base_model.named_children())[:-2])
-                        # *list(self.base_model.modules())[:-2]
-                    )
-            model.add_module('SeqVLAD', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim))
-            self.base_model = model
+            #model = nn.Sequential(
+            #            *list(self.base_model.children())[:-2]
+                        #collections.OrderedDict(list(self.base_model.named_children()))[:-2]
+                        #collections.OrderedDict(list(self.base_model.named_modules())[:-2])
+                        #*list(self.base_model.named_modules())[:-2]
+            #        )
+            #model.add_module('SeqVLAD_Module', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim))
+            #self.global_pool = SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim)
+            setattr(self.base_model, 'global_pool', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim))
+            #self.base_model = model
+        
 
     def _add_classifier_layer(self, base_model, num_class):
         if base_model == 'BNInception':
-            if self.dropout == 0:
-                self.base_model.add_module('fc', nn.Linear(self.num_centers*self.redu_dim, num_class))
+            #if self.dropout == 0:
+            #    self.base_model.add_module('fc', nn.Linear(self.num_centers*self.redu_dim, num_class))
 
+            #else:
+            #    self.base_model.add_module('dropout', nn.Dropout(p=self.dropout))
+            #    self.base_model.add_module('fc', nn.Linear(self.num_centers*self.redu_dim, num_class))
+
+            #std = 0.001
+            #normal(self.base_model.fc.weight, 0, std)
+            #constant(self.base_model.fc.bias, 0)
+            feature_dim = self.num_centers*self.redu_dim
+            if self.dropout == 0:
+     	        setattr(self.base_model, self.base_model.last_layer_name, nn.Linear(feature_dim, num_class))
+		self.new_fc = None
             else:
-                self.base_model.add_module('dropout', nn.Dropout(p=self.dropout))
-                self.base_model.add_module('fc', nn.Linear(self.num_centers*self.redu_dim, num_class))
+                setattr(self.base_model, self.base_model.last_layer_name, nn.Dropout(p=self.dropout))
+                self.new_fc = nn.Linear(feature_dim, num_class)
 
             std = 0.001
-            normal(self.base_model.fc.weight, 0, std)
-            constant(self.base_model.fc.bias, 0)
+            if self.new_fc is None:
+                normal(getattr(self.base_model, self.base_model.last_layer_name).weight, 0, std)
+                constant(getattr(self.base_model, self.base_model.last_layer_name).bias, 0)
+            else:
+                normal(self.new_fc.weight, 0, std)
+                constant(self.new_fc.bias, 0)
+            return feature_dim
 
        
         
@@ -228,16 +244,14 @@ SeqVLAD Configurations:
 
     def forward(self, input):
         sample_len = (3 if self.modality == "RGB" else 2) * self.new_length
-
         if self.modality == 'RGBDiff':
             sample_len = 3 * self.new_length
             input = self._get_diff(input)
-        print('input size ', input.size())
-        print('input size resized', input.view((-1, sample_len) + input.size()[-2:]).size())
-        print('sample_len', sample_len)
-        input = input.view((-1, sample_len) + input.size()[-2:])
-        input = input.view((-1, 3) + input.size()[-2:])
-        base_out = self.base_model(input)
+
+        # print('shape', input.view((-1, sample_len) + input.size()[-2:]).size())
+        # print('type', type(input.view((-1, sample_len) + input.size()[-2:])))
+
+        base_out = self.base_model(input.view((-1, sample_len) + input.size()[-2:]))
 
         if self.dropout > 0:
             base_out = self.new_fc(base_out)
@@ -245,10 +259,12 @@ SeqVLAD Configurations:
         if not self.before_softmax:
             base_out = self.softmax(base_out)
         # if self.reshape:
-        #     base_out = base_out.view((-1, self.time) + base_out.size()[1:])
+        #     self.in_shape = input.size()
+        #     self.batch_size = self.in_shape[0]//self.timesteps
+        #     base_out = base_out.view((self.batch_size) + base_out.size()[1:])
 
-        # output = self.consensus(base_out)
-        print('output:', output.size)
+        output = base_out
+        # print('seqvlad output:', output.size)
         return output.squeeze(1)
 
     def _get_diff(self, input, keep_rgb=False):
