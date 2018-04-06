@@ -299,7 +299,7 @@ class SeqVLADModule(torch.nn.Module):
         ## init hidden states
         ## h_tm1 = N, num_centers, H, W
         h_tm1 = torch.autograd.Variable(torch.Tensor(self.batch_size, self.num_centers, self.in_shape[2], self.in_shape[3]), requires_grad=True)
-        h_tm1 = torch.nn.init.constant(h_tm1, 0) 
+        h_tm1 = torch.nn.init.constant(h_tm1, 0).cuda() 
 
 
         ## prepare the input tensor shape
