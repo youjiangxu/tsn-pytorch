@@ -64,6 +64,9 @@ parser.add_argument('--num_centers', default=64, type=int, metavar='N',
 parser.add_argument('--redu_dim', default=512, type=int, metavar='N',
                     help='redu channels for input feature maps for seqvlad')
 
+parser.add_argument('--resume_type', default='same', type=str, metavar='',
+                    help='set the type of the pretrained model, must be one of [same, tsn] ')
+
 
 
 

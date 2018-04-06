@@ -14,6 +14,8 @@ from seqvlad_models import SeqVLAD
 from transforms import *
 from opts import parser
 
+from collections import OrderedDict
+
 best_prec1 = 0
 
 
@@ -45,13 +47,35 @@ def main():
 
     model = torch.nn.DataParallel(model, device_ids=args.gpus).cuda()
 
+
     if args.resume:
         if os.path.isfile(args.resume):
             print(("=> loading checkpoint '{}'".format(args.resume)))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
+            
+
+            model_dict = model.state_dict()
+
+            if args.resume_type == 'same':
+                ## exclude certain module
+                pretrained_dict = checkpoint['state_dict']
+
+                excluded_modules = ['module.new_fc', 'module.base_model.global_pool']
+                res_state_dict =  filter_excluded_module(pretrained_dict, excluded_modules)
+                model_dict.update(res_state_dict) 
+
+            elif args.resume_type =='tsn':
+                pretrained_dict = checkpoint['state_dict']
+                res_state_dict = init_from_tsn_model(model_dict, pretrained_dict)
+                model_dict.update(res_state_dict) 
+            else:
+                print('==> resume_type must be one of same/tsn')
+                exit()
+
+            model.load_state_dict(model_dict)
+
             print(("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.evaluate, checkpoint['epoch'])))
         else:
@@ -139,6 +163,38 @@ def main():
                 'best_prec1': best_prec1,
             }, is_best)
 
+
+def init_from_tsn_model(model_dict, tsn_model_state):
+    res_state_dict = OrderedDict()
+
+    # 1. filter out unnecessary keys
+    res_state_dict = {k: v for k, v in tsn_model_state.items() if k in model_dict}
+    # 2. overwrite entries in the existing state dict
+    # model_dict.update(pretrained_dict) 
+
+    return res_state_dict
+
+def filter_excluded_module(state_dict, excluded_modules=None):
+    # if excluded_module is not None:
+    #     for key
+    if excluded_modules is None:
+        return state_dict
+
+    res_state_dict = OrderedDict()
+
+    for k, v in state_dict.items():
+
+        is_skip = False
+        for em in excluded_modules:
+            if k.startswith(em):
+                is_skip = True
+                break
+        if not is_skip:
+            res_state_dict[k] = v
+        else:
+            print('%s module is skipped' %(k))
+            # print k, v
+    return res_state_dict
 
 def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
