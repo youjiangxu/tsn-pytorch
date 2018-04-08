@@ -46,7 +46,7 @@ SeqVLAD Configurations:
         self._prepare_base_model(base_model)
         self._add_seqvlad_layer(base_model)
         self._add_classifier_layer(base_model, num_class)
-        print(self.base_model)
+        # print(self.base_model)
         # feature_dim = self._prepare_tsn(num_class)
 
         if self.modality == 'Flow':
@@ -225,9 +225,20 @@ SeqVLAD Configurations:
                 # later BN's are frozen
                 if not self._enable_pbn or bn_cnt == 1:
                     bn.extend(list(m.parameters()))
+            elif isinstance(m, SeqVLADModule):
+                print('this is SeqVlad module, and adding the trainable parameters to train')
+                assert len(list(m.parameters())) == 8, "the number parameters of seqvlad should be equal to 8"
+                ps = list(m.parameters())
+                conv_cnt += 5
+                normal_weight.extend(ps[0:5])
+                normal_bias.extend(ps[5::])
+                print('len of weight %d' %(len(ps[0:5])))
+                print('len of bias %d' %(len(ps[5::])))
+
             elif len(m._modules) == 0:
                 if len(list(m.parameters())) > 0:
                     raise ValueError("New atomic module type: {}. Need to give it a learning policy".format(type(m)))
+           
 
         return [
             {'params': first_conv_weight, 'lr_mult': 5 if self.modality == 'Flow' else 1, 'decay_mult': 1,

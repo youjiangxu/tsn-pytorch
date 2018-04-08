@@ -234,18 +234,9 @@ class SeqVLADModule(torch.nn.Module):
         
 
 
-        self.centers = torch.Tensor(self.num_centers, self.redu_dim) # weight : out, in , h, w
-        self.centers = torch.nn.init.xavier_uniform(self.centers, gain=1) 
-        self.centers = torch.nn.Parameter(self.centers, requires_grad=True)
+        
 
-        self.share_w = torch.Tensor(self.num_centers, self.redu_dim, 1, 1) # weight : out, in , h, w
-        self.share_w = torch.nn.init.xavier_normal(self.share_w, gain=1) 
-        self.share_w = torch.nn.Parameter(self.share_w, requires_grad=True)
-
-        self.share_b = torch.Tensor(self.num_centers,) # weight : out, in , h, w
-        self.share_b = torch.nn.init.uniform(self.share_b) 
-        self.share_b = torch.nn.Parameter(self.share_b, requires_grad=True)
-
+       
 
         self.U_r = torch.Tensor(self.num_centers, self.num_centers, 3, 3) # weight : out, in , h, w
         self.U_r = torch.nn.init.xavier_normal(self.U_r, gain=1) 
@@ -258,9 +249,35 @@ class SeqVLADModule(torch.nn.Module):
         self.U_h = torch.Tensor(self.num_centers, self.num_centers, 3, 3) # weight : out, in , h, w
         self.U_h = torch.nn.init.xavier_normal(self.U_h, gain=1) 
         self.U_h = torch.nn.Parameter(self.U_h, requires_grad=True)
-    
-        self.redu_conv = torch.nn.Conv2d(1024, self.redu_dim, 1, stride=1, padding=0, dilation=1, groups=1, bias=True)
-        self.redu_relu = torch.nn.ReLU(inplace=True)
+
+        self.redu_w = torch.Tensor(self.redu_dim, 1024, 1, 1) # weight : out, in , h, w
+        self.redu_w = torch.nn.init.xavier_normal(self.redu_w, gain=1) 
+        self.redu_w = torch.nn.Parameter(self.redu_w, requires_grad=True)
+
+        self.share_w = torch.Tensor(self.num_centers, self.redu_dim, 1, 1) # weight : out, in , h, w
+        self.share_w = torch.nn.init.xavier_normal(self.share_w, gain=1) 
+        self.share_w = torch.nn.Parameter(self.share_w, requires_grad=True)
+
+        self.share_b = torch.Tensor(self.num_centers,) # weight : out, in , h, w
+        self.share_b = torch.nn.init.uniform(self.share_b) 
+        self.share_b = torch.nn.Parameter(self.share_b, requires_grad=True)
+
+        self.centers = torch.Tensor(self.num_centers, self.redu_dim) # weight : out, in , h, w
+        self.centers = torch.nn.init.xavier_uniform(self.centers, gain=1) 
+        self.centers = torch.nn.Parameter(self.centers, requires_grad=True)
+
+        self.redu_b = torch.Tensor(self.redu_dim,) # weight : out, in , h, w
+        self.redu_b = torch.nn.init.uniform(self.redu_b) 
+        self.redu_b = torch.nn.Parameter(self.redu_b, requires_grad=True)
+
+
+        # self.i2h_wx =  torch.nn.Conv2d(self.redu_dim, self.num_centers, 1, stride=1, padding=0, dilation=1, groups=1, bias=True)
+        # self.h2h_Ur =  torch.nn.Conv2d(self.num_centers, self.num_centers, 1, stride=1, padding=1, dilation=1, groups=1, bias=False)
+        # self.h2h_Uz =  torch.nn.Conv2d(self.num_centers, self.num_centers, 1, stride=1, padding=1, dilation=1, groups=1, bias=False)
+        # self.h2h_Uh =  torch.nn.Conv2d(self.num_centers, self.num_centers, 1, stride=1, padding=1, dilation=1, groups=1, bias=False)
+
+        # self.redu_conv = torch.nn.Conv2d(1024, self.redu_dim, 1, stride=1, padding=0, dilation=1, groups=1, bias=True)
+        # self.redu_relu = torch.nn.ReLU(inplace=True)
 
     def forward(self, input):
         # print('input type',type(input))
@@ -286,7 +303,8 @@ class SeqVLADModule(torch.nn.Module):
             self.redu_dim = self.in_shape[1]
         elif self.redu_dim < self.in_shape[1]:
             #input = input.contiguous()
-            input_tensor = self.redu_relu(self.redu_conv(input_tensor))
+            # input_tensor = self.redu_relu(self.redu_conv(input_tensor))
+            input_tensor = torch.nn.functional.conv2d(input_tensor, self.redu_w, bias=self.redu_b, stride=1, padding=0, dilation=1, groups=1)
 
         self.out_shape = self.num_centers*self.redu_dim
         ## wx_plus_b : N*timesteps, redu_dim, H, W

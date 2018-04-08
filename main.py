@@ -36,7 +36,7 @@ def main():
                 args.timesteps, args.redu_dim,
                 base_model=args.arch,
                 consensus_type=args.consensus_type, dropout=args.dropout, partial_bn=not args.no_partialbn)
-    print(model)
+    # print(model)
 
     crop_size = model.crop_size
     scale_size = model.scale_size
@@ -45,7 +45,11 @@ def main():
     policies = model.get_optim_policies()
     train_augmentation = model.get_augmentation()
 
+
+
     model = torch.nn.DataParallel(model, device_ids=args.gpus).cuda()
+
+
 
 
     if args.resume:
@@ -58,7 +62,7 @@ def main():
 
             model_dict = model.state_dict()
 
-            if args.resume_type == 'same':
+            if args.resume_type == 'tsn':
                 ## exclude certain module
                 pretrained_dict = checkpoint['state_dict']
 
@@ -66,7 +70,7 @@ def main():
                 res_state_dict =  filter_excluded_module(pretrained_dict, excluded_modules)
                 model_dict.update(res_state_dict) 
 
-            elif args.resume_type =='tsn':
+            elif args.resume_type =='same':
                 pretrained_dict = checkpoint['state_dict']
                 res_state_dict = init_from_tsn_model(model_dict, pretrained_dict)
                 model_dict.update(res_state_dict) 
@@ -142,10 +146,14 @@ def main():
     if args.evaluate:
         validate(val_loader, model, criterion, 0)
         return
+    
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args.lr_steps)
 
+        # print(dir(model))
+        # print(type(model.parameters.global_pool))
+        # print(model['global_pool'])
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch)
 
@@ -212,6 +220,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
     model.train()
     end = time.time()
     for i, (input, target) in enumerate(train_loader):
+
+
         # print('##### i:', i)
         # measure data loading time
         data_time.update(time.time() - end)
