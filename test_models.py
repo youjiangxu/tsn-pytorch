@@ -7,7 +7,8 @@ import torch.optim
 from sklearn.metrics import confusion_matrix
 
 from dataset import TSNDataSet
-from models import TSN
+from seqvlad_models import SeqVLAD
+
 from transforms import *
 from ops import ConsensusModule
 
@@ -28,11 +29,22 @@ parser.add_argument('--crop_fusion_type', type=str, default='avg',
                     choices=['avg', 'max', 'topk'])
 parser.add_argument('--k', type=int, default=3)
 parser.add_argument('--dropout', type=float, default=0.7)
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=1, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--gpus', nargs='+', type=int, default=None)
 parser.add_argument('--flow_prefix', type=str, default='')
 
+parser.add_argument('--num_centers', type=int, default=64, metavar='N',
+                    help='define the number of centers')
+
+parser.add_argument('--timesteps', type=int, default=10, metavar='N',
+                    help='define the length of video for testing')
+
+parser.add_argument('--redu_dim', type=int, default=512, metavar='N',
+                    help='define the input reduction dim')
+
+parser.add_argument('-s', '--sources', default='', type=str, metavar='PATH',
+                    help='the sources of the dataset')
 args = parser.parse_args()
 
 
@@ -45,10 +57,15 @@ elif args.dataset == 'kinetics':
 else:
     raise ValueError('Unknown dataset '+args.dataset)
 
-net = TSN(num_class, 1, args.modality,
-          base_model=args.arch,
-          consensus_type=args.crop_fusion_type,
-          dropout=args.dropout)
+# net = TSN(num_class, 1, args.modality,
+#           base_model=args.arch,
+#           consensus_type=args.crop_fusion_type,
+#           dropout=args.dropout)
+
+net = SeqVLAD(num_class, args.num_centers, args.modality,
+                args.timesteps, args.redu_dim,
+                base_model=args.arch,
+                consensus_type=args.crop_fusion_type, dropout=args.dropout)
 
 checkpoint = torch.load(args.weights)
 print("model epoch {} best prec@1: {}".format(checkpoint['epoch'], checkpoint['best_prec1']))
@@ -69,10 +86,10 @@ else:
     raise ValueError("Only 1 and 10 crops are supported while we got {}".format(args.test_crops))
 
 data_loader = torch.utils.data.DataLoader(
-        TSNDataSet("", args.test_list, num_segments=args.test_segments,
+        TSNDataSet(args.sources, args.test_list, timesteps=args.timesteps,
                    new_length=1 if args.modality == "RGB" else 5,
                    modality=args.modality,
-                   image_tmpl="img_{:05d}.jpg" if args.modality in ['RGB', 'RGBDiff'] else args.flow_prefix+"{}_{:05d}.jpg",
+                   image_tmpl="image_{:05d}.jpg" if args.modality in ['RGB', 'RGBDiff'] else args.flow_prefix+"{}_{:04d}.jpg",
                    test_mode=True,
                    transform=torchvision.transforms.Compose([
                        cropping,
@@ -81,7 +98,7 @@ data_loader = torch.utils.data.DataLoader(
                        GroupNormalize(net.input_mean, net.input_std),
                    ])),
         batch_size=1, shuffle=False,
-        num_workers=args.workers * 2, pin_memory=True)
+        num_workers=args.workers, pin_memory=True)
 
 if args.gpus is not None:
     devices = [args.gpus[i] for i in range(args.workers)]
@@ -95,6 +112,7 @@ net.eval()
 data_gen = enumerate(data_loader)
 
 total_num = len(data_loader.dataset)
+print('total_num', total_num)
 output = []
 
 
@@ -114,8 +132,8 @@ def eval_video(video_data):
     input_var = torch.autograd.Variable(data.view(-1, length, data.size(2), data.size(3)),
                                         volatile=True)
     rst = net(input_var).data.cpu().numpy().copy()
-    return i, rst.reshape((num_crop, args.test_segments, num_class)).mean(axis=0).reshape(
-        (args.test_segments, 1, num_class)
+    return i, rst.reshape((num_crop, 1, num_class)).mean(axis=0).reshape(
+        (1, 1, num_class)
     ), label[0]
 
 
