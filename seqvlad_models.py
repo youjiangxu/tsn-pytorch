@@ -8,7 +8,8 @@ from torch.nn.init import normal, constant
 import collections
 class SeqVLAD(nn.Module):
     def __init__(self, num_class, num_centers, modality,
-                 timesteps=1, redu_dim=512, with_relu=False,
+                
+                 timesteps=1, redu_dim=512,with_relu=False,
                  base_model='resnet101', new_length=None,
                  consensus_type='avg', before_softmax=True,
                  dropout=0.8,
@@ -21,6 +22,7 @@ class SeqVLAD(nn.Module):
         self.before_softmax = before_softmax
         self.dropout = dropout
         self.crop_num = crop_num
+        self.with_relu = with_relu
         self.consensus_type = consensus_type
         if not before_softmax and consensus_type != 'avg':
             raise ValueError("Only avg consensus can be used after Softmax")
@@ -33,12 +35,11 @@ class SeqVLAD(nn.Module):
 
         self.timesteps = timesteps
         self.redu_dim = redu_dim
-        self.with_relu = with_relu
         self.activation = activation
-
+        print('self.activation,',self.activation)
         print(("""
-Initializing SeqVLAD with base model: {}.
-SeqVLAD Configurations:
+    Initializing SeqVLAD with base model: {}.
+    SeqVLAD Configurations:
     input_modality:     {}
     num_centers:       {}
     new_length:         {}
@@ -81,7 +82,8 @@ SeqVLAD Configurations:
             #        )
             #model.add_module('SeqVLAD_Module', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim))
             #self.global_pool = SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim)
-            setattr(self.base_model, 'global_pool', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
+            setattr(self.base_model, 'global_pool', 
+                    SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
             #self.base_model = model
         
 
@@ -193,7 +195,71 @@ SeqVLAD Configurations:
 
     def partialBN(self, enable):
         self._enable_pbn = enable
+    def get_sub_optim_policies(self):
+        first_conv_weight = []
+        first_conv_weight = []
+        first_conv_bias = []
+        normal_weight = []
+        normal_bias = []
+        bn = []
 
+        conv_cnt = 0
+        bn_cnt = 0
+        for m in self.modules():
+            if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Conv1d):
+                #ps = list(m.parameters())
+                #conv_cnt += 1
+                #if conv_cnt == 1:
+                #    first_conv_weight.append(ps[0])
+                #    if len(ps) == 2:
+                #        first_conv_bias.append(ps[1])
+                #else:
+                #    normal_weight.append(ps[0])
+                
+                #    if len(ps) == 2:
+                #        normal_bias.append(ps[1])
+                pass
+            elif isinstance(m, torch.nn.Linear):
+                ps = list(m.parameters())
+                normal_weight.append(ps[0])
+                if len(ps) == 2:
+                    normal_bias.append(ps[1])
+            elif isinstance(m, torch.nn.BatchNorm1d):
+                #bn.extend(list(m.parameters()))
+                pass
+            elif isinstance(m, torch.nn.BatchNorm2d):
+                ##bn_cnt += 1
+                ## later BN's are frozen
+                #if not self._enable_pbn or bn_cnt == 1:
+                #    bn.extend(list(m.parameters()))
+                pass
+            elif isinstance(m, SeqVLADModule):
+                print('this is SeqVlad module, and adding the trainable parameters to train')
+                assert len(list(m.parameters())) == 8, "the number parameters of seqvlad should be equal to 8"
+                ps = list(m.parameters())
+                conv_cnt += 5
+                normal_weight.extend(ps[0:5])
+                normal_bias.extend(ps[5::])
+                print('len of weight %d' %(len(ps[0:5])))
+                print('len of bias %d' %(len(ps[5::])))
+
+            elif len(m._modules) == 0:
+                if len(list(m.parameters())) > 0:
+                    raise ValueError("New atomic module type: {}. Need to give it a learning policy".format(type(m)))
+
+
+        return [
+            {'params': first_conv_weight, 'lr_mult': 5 if self.modality == 'Flow' else 1, 'decay_mult': 1,
+             'name': "first_conv_weight"},
+            {'params': first_conv_bias, 'lr_mult': 10 if self.modality == 'Flow' else 2, 'decay_mult': 0,
+             'name': "first_conv_bias"},
+            {'params': normal_weight, 'lr_mult': 1, 'decay_mult': 1,
+             'name': "normal_weight"},
+            {'params': normal_bias, 'lr_mult': 2, 'decay_mult': 0,
+             'name': "normal_bias"},
+            {'params': bn, 'lr_mult': 1, 'decay_mult': 0,
+             'name': "BN scale/shift"},
+        ]
     def get_optim_policies(self):
         first_conv_weight = []
         first_conv_bias = []

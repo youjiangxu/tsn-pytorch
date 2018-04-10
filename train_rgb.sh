@@ -7,4 +7,6 @@ python main.py ucf101 RGB ./data/ucf101_splits/rgb/train_split1.txt ./data/ucf10
    -b 2 -j 8 --dropout 0.8 \
    --snapshot_pref ucf101_bninception_ \
    --sources /data/UCF-101-frames/ \
-   --activation softmax
+   --activation softmax \
+   --optim Adam \
+    --two_steps 30 \

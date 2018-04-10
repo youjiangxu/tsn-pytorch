@@ -45,6 +45,10 @@ def main():
     input_mean = model.input_mean
     input_std = model.input_std
     policies = model.get_optim_policies()
+    if args.two_steps is not None:
+        print('two step training ')
+        sub_policies = model.get_sub_optim_policies()
+
     train_augmentation = model.get_augmentation()
 
 
@@ -65,6 +69,8 @@ def main():
             model_dict = model.state_dict()
 
             if args.resume_type == 'tsn':
+                args.start_epoch = 0
+
                 ## exclude certain module
                 pretrained_dict = checkpoint['state_dict']
 
@@ -73,6 +79,8 @@ def main():
                 model_dict.update(res_state_dict) 
 
             elif args.resume_type =='same':
+                args.start_epoch = 0
+                
                 pretrained_dict = checkpoint['state_dict']
                 res_state_dict = init_from_tsn_model(model_dict, pretrained_dict)
                 model_dict.update(res_state_dict) 
@@ -140,16 +148,25 @@ def main():
         print(('group: {} has {} params, lr_mult: {}, decay_mult: {}'.format(
             group['name'], len(group['params']), group['lr_mult'], group['decay_mult'])))
 
+
+    if args.two_steps is not None:
+        for group in sub_policies:
+            print(('group: {} has {} params, lr_mult: {}, decay_mult: {}'.format(
+                group['name'], len(group['params']), group['lr_mult'], group['decay_mult'])))
+
     if args.optim == 'SGD':
-        optimizer = torch.optim.SGD(policies,
-                                    args.lr,
-                                    momentum=args.momentum,
-                                    weight_decay=args.weight_decay)
+        optimizer = torch.optim.SGD(policies, args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        if args.two_steps is not None:
+            sub_optimizer = torch.optim.SGD(sub_policies, args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+
+
     elif args.optim == 'Adam':
         print('use Adam optimizer ... ...')
-        optimizer = torch.optim.Adam(policies,
-                                    args.lr,
-                                    weight_decay=args.weight_decay)
+        optimizer = torch.optim.Adam(policies, args.lr, weight_decay=args.weight_decay)
+        if args.two_steps is not None:
+            sub_optimizer = torch.optim.Adam(sub_policies, args.lr, weight_decay=args.weight_decay)
+
+
     else:
         print('optimzer: {} is not implimented, please use SGD or Adam'.format(args.optim))
         exit()
@@ -160,12 +177,16 @@ def main():
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args.lr_steps)
+        if args.two_steps is not None and epoch < args.two_steps:
+            train(train_loader, model, criterion, sub_optimizer, epoch)
+        else:
+            train(train_loader, model, criterion, optimizer, epoch)
 
         # print(dir(model))
         # print(type(model.parameters.global_pool))
         # print(model['global_pool'])
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch)
+        
 
         # evaluate on validation set
         if (epoch + 1) % args.eval_freq == 0 or epoch == args.epochs - 1:
@@ -264,6 +285,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
             total_norm = clip_grad_norm(model.parameters(), args.clip_gradient)
             if total_norm > args.clip_gradient:
                 print("clipping gradient: {} with coef {}".format(total_norm, args.clip_gradient / total_norm))
+
 
         optimizer.step()
 

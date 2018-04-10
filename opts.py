@@ -75,6 +75,8 @@ parser.add_argument('--activation', type=str, default=None,
 parser.add_argument('--optim', type=str, default="SGD", choices=['SGD', 'Adam'],
                     help='define the optimizer, default is SGD ')
 
+parser.add_argument('--two_steps', default=None, type=int, metavar='N',
+                    help='in the first step, we only train')
 
 
 
