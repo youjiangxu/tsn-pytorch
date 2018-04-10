@@ -7,6 +7,8 @@ python test_models.py ucf101 RGB ./data/ucf101_splits/rgb/test_split1.txt \
     --num_centers 64 \
     --timesteps 10 \
     --redu_dim 512 \
-    --sources /data/UCF-101-frames/ 
+    --sources /data/UCF-101-frames/ \
+    --with_relu \
+    --activation softmax 
 
 

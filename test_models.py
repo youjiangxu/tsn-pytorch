@@ -45,6 +45,12 @@ parser.add_argument('--redu_dim', type=int, default=512, metavar='N',
 
 parser.add_argument('-s', '--sources', default='', type=str, metavar='PATH',
                     help='the sources of the dataset')
+
+parser.add_argument('--with_relu', action='store_true', default=False,
+                    help='set relu for reduction convolution')
+parser.add_argument('--activation', type=str, default=None,
+                    help='define the activation of the assignments, default is None')
+
 args = parser.parse_args()
 
 
@@ -63,8 +69,9 @@ else:
 #           dropout=args.dropout)
 
 net = SeqVLAD(num_class, args.num_centers, args.modality,
-                args.timesteps, args.redu_dim,
+                args.timesteps, args.redu_dim, with_relu=args.with_relu,
                 base_model=args.arch,
+                activation=args.activation,
                 consensus_type=args.crop_fusion_type, dropout=args.dropout)
 
 checkpoint = torch.load(args.weights)
