@@ -307,7 +307,6 @@ class SeqVLADModule(torch.nn.Module):
             # input_tensor = self.redu_relu(self.redu_conv(input_tensor))
             input_tensor = torch.nn.functional.conv2d(input_tensor, self.redu_w, bias=self.redu_b, stride=1, padding=0, dilation=1, groups=1)
             if self.with_relu:
-                print('relu')
                 input_tensor = torch.nn.functional.relu(input_tensor)
 
 

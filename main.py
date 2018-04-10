@@ -140,11 +140,19 @@ def main():
         print(('group: {} has {} params, lr_mult: {}, decay_mult: {}'.format(
             group['name'], len(group['params']), group['lr_mult'], group['decay_mult'])))
 
-    optimizer = torch.optim.SGD(policies,
-                                args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
-
+    if args.optim == 'SGD':
+        optimizer = torch.optim.SGD(policies,
+                                    args.lr,
+                                    momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
+    elif args.optim == 'Adam':
+        print('use Adam optimizer ... ...')
+        optimizer = torch.optim.Adam(policies,
+                                    args.lr,
+                                    weight_decay=args.weight_decay)
+    else:
+        print('optimzer: {} is not implimented, please use SGD or Adam'.format(args.optim))
+        exit()
     if args.evaluate:
         validate(val_loader, model, criterion, 0)
         return

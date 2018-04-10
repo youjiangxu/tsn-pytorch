@@ -72,6 +72,9 @@ parser.add_argument('--with_relu', action='store_true', default=False,
 parser.add_argument('--activation', type=str, default=None,
                     help='define the activation of the assignments, default is None')
 
+parser.add_argument('--optim', type=str, default="SGD", choices=['SGD', 'Adam'],
+                    help='define the optimizer, default is SGD ')
+
 
 
 
