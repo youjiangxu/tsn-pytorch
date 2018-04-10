@@ -34,7 +34,9 @@ def main():
 
     model = SeqVLAD(num_class, args.num_centers, args.modality,
                 args.timesteps, args.redu_dim,
+                with_relu=args.with_relu,
                 base_model=args.arch,
+                activation=args.activation,
                 consensus_type=args.consensus_type, dropout=args.dropout, partial_bn=not args.no_partialbn)
     # print(model)
 

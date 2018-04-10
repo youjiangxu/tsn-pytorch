@@ -216,7 +216,7 @@ class ConsensusModule(torch.nn.Module):
 
 class SeqVLADModule(torch.nn.Module):
 
-    def __init__(self, timesteps, num_centers, redu_dim):
+    def __init__(self, timesteps, num_centers, redu_dim, with_relu=False, activation=None):
         '''
             num_centers: set the number of centers for sevlad
             redu_dim: reduce channels for input tensor
@@ -225,11 +225,13 @@ class SeqVLADModule(torch.nn.Module):
         self.num_centers = num_centers
         self.redu_dim = redu_dim
         self.timesteps = timesteps
+        self.with_relu = with_relu
         # print('## in SeqVLADModule ##',self.num_centers, self.redu_dim)
 
         self.in_shape = None
         self.out_shape = self.num_centers*self.redu_dim
         self.batch_size = None
+        self.activation = activation
         # print('## in SeqVLADModule ##',self.num_centers, self.redu_dim)
         
 
@@ -298,13 +300,16 @@ class SeqVLADModule(torch.nn.Module):
         
         # input_tensor = torch.autograd.Variable(input, requires_grad=True).cuda()
         input_tensor = input
-
         if self.redu_dim == None:
             self.redu_dim = self.in_shape[1]
         elif self.redu_dim < self.in_shape[1]:
             #input = input.contiguous()
             # input_tensor = self.redu_relu(self.redu_conv(input_tensor))
             input_tensor = torch.nn.functional.conv2d(input_tensor, self.redu_w, bias=self.redu_b, stride=1, padding=0, dilation=1, groups=1)
+            if self.with_relu:
+                print('relu')
+                input_tensor = torch.nn.functional.relu(input_tensor)
+
 
         self.out_shape = self.num_centers*self.redu_dim
         ## wx_plus_b : N*timesteps, redu_dim, H, W
@@ -352,6 +357,18 @@ class SeqVLADModule(torch.nn.Module):
 
         ## assignments: batch_size, timesteps, num_centers, h*w
         assignments = assignments.view(self.batch_size*self.timesteps, self.num_centers, self.in_shape[2]*self.in_shape[3])
+
+        if self.activation is not None:
+            if self.activation == 'softmax':
+                assignments = torch.transpose(assignments, 1, 2).contiguous()
+                assignments = assignments.view(self.batch_size*self.timesteps*self.in_shape[2]*self.in_shape[3], self.num_centers)
+                assignments = torch.nn.functional.softmax(assignments) #my_softmax(assignments, dim=1)
+                assignments = assignments.view(self.batch_size*self.timesteps, self.in_shape[2]*self.in_shape[3], self.num_centers)
+                assignments = torch.transpose(assignments, 1, 2).contiguous()
+            else:
+                print('TODO implementation ...')
+                exit()
+
 
         ## alpha *c 
         ## a_sum: batch_size, timesteps, num_centers, 1

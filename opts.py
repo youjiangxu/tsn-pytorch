@@ -67,6 +67,11 @@ parser.add_argument('--redu_dim', default=512, type=int, metavar='N',
 parser.add_argument('--resume_type', default='same', type=str, metavar='',
                     help='set the type of the pretrained model, must be one of [same, tsn] ')
 
+parser.add_argument('--with_relu', action='store_true', default=False,
+                    help='set relu for reduction convolution')
+parser.add_argument('--activation', type=str, default=None,
+                    help='define the activation of the assignments, default is None')
+
 
 
 

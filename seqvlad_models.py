@@ -8,10 +8,11 @@ from torch.nn.init import normal, constant
 import collections
 class SeqVLAD(nn.Module):
     def __init__(self, num_class, num_centers, modality,
-                 timesteps=1, redu_dim=512,
+                 timesteps=1, redu_dim=512, with_relu=False,
                  base_model='resnet101', new_length=None,
                  consensus_type='avg', before_softmax=True,
                  dropout=0.8,
+                 activation=None,
                  crop_num=1, partial_bn=True):
         super(SeqVLAD, self).__init__()
         self.modality = modality
@@ -32,6 +33,8 @@ class SeqVLAD(nn.Module):
 
         self.timesteps = timesteps
         self.redu_dim = redu_dim
+        self.with_relu = with_relu
+        self.activation = activation
 
         print(("""
 Initializing SeqVLAD with base model: {}.
@@ -78,7 +81,7 @@ SeqVLAD Configurations:
             #        )
             #model.add_module('SeqVLAD_Module', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim))
             #self.global_pool = SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim)
-            setattr(self.base_model, 'global_pool', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim))
+            setattr(self.base_model, 'global_pool', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
             #self.base_model = model
         
 
