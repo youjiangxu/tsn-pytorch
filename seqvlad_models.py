@@ -1,6 +1,6 @@
 from torch import nn
 
-from ops.basic_ops import ConsensusModule, Identity, SeqVLADModule, BiSeqVLADModule
+from ops.basic_ops import ConsensusModule, Identity, SeqVLADModule, BiSeqVLADModule, UnshareBiSeqVLADModule
 from ops.basic_ops1 import SeqVLADUniformModule
 from transforms import *
 from torch.nn.init import normal, constant
@@ -15,7 +15,8 @@ class SeqVLAD(nn.Module):
                  consensus_type='avg', before_softmax=True,
                  dropout=0.8,
                  activation=None,
-                 bidirectional=False,
+                 seqvlad_type='seqvlad',
+                 
                  crop_num=1, partial_bn=True):
 
         super(SeqVLAD, self).__init__()
@@ -26,7 +27,7 @@ class SeqVLAD(nn.Module):
         self.dropout = dropout
         self.crop_num = crop_num
         self.with_relu = with_relu
-        self.bidirectional = bidirectional
+        self.seqvlad_type = seqvlad_type
         self.consensus_type = consensus_type
         if not before_softmax and consensus_type != 'avg':
             raise ValueError("Only avg consensus can be used after Softmax")
@@ -88,12 +89,15 @@ SeqVLAD Configurations:
             #        )
             #model.add_module('SeqVLAD_Module', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim))
             #self.global_pool = SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim)
-            if not self.bidirectional:
+            if self.seqvlad_type == 'seqvlad':
                 setattr(self.base_model, 'global_pool', 
                         SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
-            else:
-                 setattr(self.base_model, 'global_pool', 
+            elif self.seqvlad_type == 'bidirect':
+                setattr(self.base_model, 'global_pool', 
                         BiSeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
+            elif self.seqvlad_type == 'unshare_bidirect':
+                 setattr(self.base_model, 'global_pool', 
+                        UnshareBiSeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
             #self.base_model = model
         
 
@@ -252,6 +256,15 @@ SeqVLAD Configurations:
                 normal_bias.extend(ps[5::])
                 print('len of weight %d' %(len(ps[0:5])))
                 print('len of bias %d' %(len(ps[5::])))
+            elif isinstance(m, UnshareBiSeqVLADModule):
+                print('this is unshare SeqVlad module, and adding the trainable parameters to train')
+                assert len(list(m.parameters())) == 13, "the number parameters of seqvlad should be equal to 13"
+                ps = list(m.parameters())
+                conv_cnt += 9
+                normal_weight.extend(ps[0:9])
+                normal_bias.extend(ps[9::])
+                print('len of weight %d' %(len(ps[0:9])))
+                print('len of bias %d' %(len(ps[9::])))
 
             elif len(m._modules) == 0:
                 if len(list(m.parameters())) > 0:
@@ -313,6 +326,16 @@ SeqVLAD Configurations:
                 normal_bias.extend(ps[5::])
                 print('len of weight %d' %(len(ps[0:5])))
                 print('len of bias %d' %(len(ps[5::])))
+
+            elif isinstance(m, UnshareBiSeqVLADModule):
+                print('this is unshare SeqVlad module, and adding the trainable parameters to train')
+                assert len(list(m.parameters())) == 13, "the number parameters of seqvlad should be equal to 13"
+                ps = list(m.parameters())
+                conv_cnt += 9
+                normal_weight.extend(ps[0:9])
+                normal_bias.extend(ps[9::])
+                print('len of weight %d' %(len(ps[0:9])))
+                print('len of bias %d' %(len(ps[9::])))
 
             elif len(m._modules) == 0:
                 if len(list(m.parameters())) > 0:

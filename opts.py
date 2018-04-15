@@ -85,6 +85,6 @@ parser.add_argument('--reverse', default=False, action='store_true',
                     help='reverse the sampling order, there will be 0.5 probability to reverse the sequence if set True')
 
 
-parser.add_argument('--bidirectional', default=False, action='store_true',
-                    help='use bidirectional gru, defaults is False')
+parser.add_argument('--seqvlad_type', default='seqvlad', choices=['seqvlad', 'bidirect', 'unshare_bidirect'],
+                    help='use seqvlad_type, defaults is seqvlad')
 
