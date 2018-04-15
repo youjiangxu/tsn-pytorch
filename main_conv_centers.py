@@ -10,7 +10,7 @@ import torch.optim
 from torch.nn.utils import clip_grad_norm
 
 from dataset import TSNDataSet
-from seqvlad_models import SeqVLAD
+from seqvlad_models import SeqVLAD_with_conv_centers
 from transforms import *
 from opts import parser
 
@@ -32,15 +32,11 @@ def main():
     else:
         raise ValueError('Unknown dataset '+args.dataset)
 
-
-
-
-    model = SeqVLAD(num_class, args.num_centers, args.modality,
+    model = SeqVLAD_with_conv_centers(num_class, args.num_centers, args.modality,
                 args.timesteps, args.redu_dim,
                 with_relu=args.with_relu,
                 base_model=args.arch,
                 activation=args.activation,
-                bidirectional=args.bidirectional,
                 consensus_type=args.consensus_type, dropout=args.dropout, partial_bn=not args.no_partialbn)
     # print(model)
 

@@ -1,6 +1,6 @@
 from torch import nn
 
-from ops.basic_ops import ConsensusModule, Identity, SeqVLADModule
+from ops.basic_ops import ConsensusModule, Identity, SeqVLADModule, BiSeqVLADModule
 from ops.basic_ops1 import SeqVLADUniformModule
 from transforms import *
 from torch.nn.init import normal, constant
@@ -15,7 +15,9 @@ class SeqVLAD(nn.Module):
                  consensus_type='avg', before_softmax=True,
                  dropout=0.8,
                  activation=None,
+                 bidirectional=False,
                  crop_num=1, partial_bn=True):
+
         super(SeqVLAD, self).__init__()
         self.modality = modality
         self.num_centers = num_centers
@@ -24,6 +26,7 @@ class SeqVLAD(nn.Module):
         self.dropout = dropout
         self.crop_num = crop_num
         self.with_relu = with_relu
+        self.bidirectional = bidirectional
         self.consensus_type = consensus_type
         if not before_softmax and consensus_type != 'avg':
             raise ValueError("Only avg consensus can be used after Softmax")
@@ -49,7 +52,9 @@ SeqVLAD Configurations:
         """.format(base_model, self.modality, self.num_centers, self.new_length, consensus_type, self.dropout)))
 
         self._prepare_base_model(base_model)
+
         self._add_seqvlad_layer(base_model)
+
         self._add_classifier_layer(base_model, num_class)
         # print(self.base_model)
         # feature_dim = self._prepare_tsn(num_class)
@@ -83,8 +88,12 @@ SeqVLAD Configurations:
             #        )
             #model.add_module('SeqVLAD_Module', SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim))
             #self.global_pool = SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim)
-            setattr(self.base_model, 'global_pool', 
-                    SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
+            if not self.bidirectional:
+                setattr(self.base_model, 'global_pool', 
+                        SeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
+            else:
+                 setattr(self.base_model, 'global_pool', 
+                        BiSeqVLADModule(self.timesteps, self.num_centers, self.redu_dim, self.with_relu, self.activation))
             #self.base_model = model
         
 
@@ -234,7 +243,7 @@ SeqVLAD Configurations:
                 #if not self._enable_pbn or bn_cnt == 1:
                 #    bn.extend(list(m.parameters()))
                 pass
-            elif isinstance(m, SeqVLADModule):
+            elif isinstance(m, SeqVLADModule) or isinstance(m, BiSeqVLADModule):
                 print('this is SeqVlad module, and adding the trainable parameters to train')
                 assert len(list(m.parameters())) == 8, "the number parameters of seqvlad should be equal to 8"
                 ps = list(m.parameters())
@@ -295,7 +304,7 @@ SeqVLAD Configurations:
                 # later BN's are frozen
                 if not self._enable_pbn or bn_cnt == 1:
                     bn.extend(list(m.parameters()))
-            elif isinstance(m, SeqVLADModule):
+            elif isinstance(m, SeqVLADModule) or isinstance(m, BiSeqVLADModule):
                 print('this is SeqVlad module, and adding the trainable parameters to train')
                 assert len(list(m.parameters())) == 8, "the number parameters of seqvlad should be equal to 8"
                 ps = list(m.parameters())
