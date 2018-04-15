@@ -78,6 +78,12 @@ parser.add_argument('--optim', type=str, default="SGD", choices=['SGD', 'Adam'],
 parser.add_argument('--two_steps', default=None, type=int, metavar='N',
                     help='in the first step, we only train')
 
+parser.add_argument('--sampling_method', default='tsn', type=str, choices=['tsn', 'random', 'reverse'],
+                    help='defint sampling method for training procedure')
+
+parser.add_argument('--reverse', default=False, action='store_true',
+                    help='reverse the sampling order, there will be 0.5 probability to reverse the sequence if set True')
+
 
 
 

@@ -112,6 +112,8 @@ def main():
         TSNDataSet(args.sources, args.train_list, timesteps=args.timesteps,
                    new_length=data_length,
                    modality=args.modality,
+                   sampling_method=args.sampling_method,
+                   reverse=args.reverse,
                    image_tmpl="image_{:05d}.jpg" if args.modality in ["RGB", "RGBDiff"] else args.flow_prefix+"{}_{:04d}.jpg",
                    transform=torchvision.transforms.Compose([
                        train_augmentation,
