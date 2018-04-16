@@ -53,7 +53,7 @@ class ConsensusModule(torch.nn.Module):
 
 class SeqVLADModule(torch.nn.Module):
 
-    def __init__(self, timesteps, num_centers, redu_dim, with_relu=False, activation=None):
+    def __init__(self, timesteps, num_centers, redu_dim, with_relu=False, activation=None, with_center_loss=False):
         '''
             num_centers: set the number of centers for sevlad
             redu_dim: reduce channels for input tensor
@@ -69,6 +69,8 @@ class SeqVLADModule(torch.nn.Module):
         self.out_shape = self.num_centers*self.redu_dim
         self.batch_size = None
         self.activation = activation
+
+        self.with_center_loss = with_center_loss
         # print('## in SeqVLADModule ##',self.num_centers, self.redu_dim)
         
 
@@ -242,7 +244,13 @@ class SeqVLADModule(torch.nn.Module):
         # print('vlad type', type(vlad))
         # print(vlad.size())
         # vlad = torch.Tensor([vlad]).cuda() # NEW line
-        return vlad
+        if not self.with_center_loss:
+            return vlad
+        else:
+            assignments
+            assignments = assignments.view(self.batch_size, self.timesteps, self.num_centers, self.in_shape[2]*self.in_shape[3])
+            assign_predict = torch.sum(torch.sum(assignments, 3),1)
+            return assign_predict, vlad
 
 class BiSeqVLADModule(torch.nn.Module):
 

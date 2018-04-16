@@ -88,3 +88,5 @@ parser.add_argument('--reverse', default=False, action='store_true',
 parser.add_argument('--seqvlad_type', default='seqvlad', choices=['seqvlad', 'bidirect', 'unshare_bidirect'],
                     help='use seqvlad_type, defaults is seqvlad')
 
+parser.add_argument('--lossweight', default=1.0, type=float, metavar='M',
+                    help='lossweight')
