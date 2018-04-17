@@ -51,6 +51,9 @@ parser.add_argument('--with_relu', action='store_true', default=False,
 parser.add_argument('--activation', type=str, default=None,
                     help='define the activation of the assignments, default is None')
 
+
+parser.add_argument('--seqvlad_type', default='seqvlad', choices=['seqvlad', 'bidirect', 'unshare_bidirect'],
+                    help='use seqvlad_type, defaults is seqvlad')
 args = parser.parse_args()
 
 
@@ -72,6 +75,7 @@ net = SeqVLAD(num_class, args.num_centers, args.modality,
                 args.timesteps, args.redu_dim, with_relu=args.with_relu,
                 base_model=args.arch,
                 activation=args.activation,
+                seqvlad_type=args.seqvlad_type,
                 consensus_type=args.crop_fusion_type, dropout=args.dropout)
 
 checkpoint = torch.load(args.weights)
@@ -94,6 +98,7 @@ else:
 
 data_loader = torch.utils.data.DataLoader(
         TSNDataSet(args.sources, args.test_list, timesteps=args.timesteps,
+                   test_segments=args.test_segments,
                    new_length=1 if args.modality == "RGB" else 5,
                    modality=args.modality,
                    image_tmpl="image_{:05d}.jpg" if args.modality in ['RGB', 'RGBDiff'] else args.flow_prefix+"{}_{:04d}.jpg",
@@ -150,8 +155,26 @@ max_num = args.max_num if args.max_num > 0 else len(data_loader.dataset)
 for i, (data, label) in data_gen:
     if i >= max_num:
         break
-    rst = eval_video((i, data, label))
-    output.append(rst[1:])
+    if args.test_segments == 25:
+        temp_score = np.zeros((args.test_crops, 1, num_class))
+        temp_label = 0
+        if args.modality == 'RGB':
+            length = 3
+        elif args.modality == 'Flow':
+            length = 10
+        elif args.modality == 'RGBDiff':
+            length = 18
+        else:
+            raise ValueError("Unknown modality" + args.modality)
+        for s in range(args.test_segments):
+            rst = eval_video((i, data[:,s*args.timesteps*length*args.test_crops:(s+1)*args.timesteps*length*args.test_crops,:,:], label))
+            temp_score += rst[1]
+            temp_label = rst[2]
+        
+        output.append((temp_score, temp_label))
+    elif args.test_segments == 1:
+        rst = eval_video((i, data, label))
+        output.append(rst[1:])
     cnt_time = time.time() - proc_start_time
     print('video {} done, total {}/{}, average {} sec/video'.format(i, i+1,
                                                                     total_num,

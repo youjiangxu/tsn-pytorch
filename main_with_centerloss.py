@@ -187,7 +187,7 @@ def main():
         print('optimzer: {} is not implimented, please use SGD or Adam'.format(args.optim))
         exit()
     if args.evaluate:
-        validate(val_loader, model, criterion, args.loss_weight, 0)
+        validate(val_loader, model, criterion, args.lossweight, 0)
         return
     
 
@@ -206,7 +206,7 @@ def main():
 
         # evaluate on validation set
         if (epoch + 1) % args.eval_freq == 0 or epoch == args.epochs - 1:
-            prec1 = validate(val_loader, model, criterion, args.loss_weight, (epoch + 1) * len(train_loader))
+            prec1 = validate(val_loader, model, criterion, args.lossweight, (epoch + 1) * len(train_loader))
 
             # remember best prec@1 and save checkpoint
             is_best = prec1 > best_prec1
@@ -251,7 +251,7 @@ def filter_excluded_module(state_dict, excluded_modules=None):
             # print k, v
     return res_state_dict
 
-def train(train_loader, model, criterion, optimizer, optimizer4center, loss_weight, epoch):
+def train(train_loader, model, criterion, optimizer, optimizer4center, lossweight, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     nll_losses = AverageMeter()
@@ -287,7 +287,7 @@ def train(train_loader, model, criterion, optimizer, optimizer4center, loss_weig
         assign_predict, output = model(input_var)
         # loss = criterion(output, target_var)
         nll_loss = criterion[0](output, target_var)
-        center_loss = loss_weight * criterion[1](target_var, assign_predict)
+        center_loss = lossweight * criterion[1](target_var, assign_predict)
         loss =  nll_loss + center_loss
 
 
@@ -332,7 +332,7 @@ def train(train_loader, model, criterion, optimizer, optimizer4center, loss_weig
                    data_time=data_time, loss=losses, nll_loss=nll_losses, center_loss=center_losses, top1=top1, top5=top5, lr=optimizer.param_groups[-1]['lr'])))
 
 
-def validate(val_loader, model, criterion, loss_weight, iter, logger=None):
+def validate(val_loader, model, criterion, lossweight, iter, logger=None):
     batch_time = AverageMeter()
     losses = AverageMeter()
     nll_losses = AverageMeter()
@@ -353,7 +353,7 @@ def validate(val_loader, model, criterion, loss_weight, iter, logger=None):
         assign_predict, output = model(input_var)
 
         nll_loss = criterion[0](output, target_var)
-        center_loss = loss_weight * criterion[1](target_var, assign_predict)
+        center_loss = lossweight * criterion[1](target_var, assign_predict)
         loss =  nll_loss + center_loss
 
 
