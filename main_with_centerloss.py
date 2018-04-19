@@ -151,7 +151,7 @@ def main():
     # define loss function (criterion) and optimizer
     if args.loss_type == 'nll':
         nll = torch.nn.CrossEntropyLoss().cuda()
-        centerloss = CenterLoss(num_class, args.num_centers).cuda()
+        centerloss = CenterLoss(num_class, args.num_centers*args.redu_dim).cuda()
         criterion = [nll, centerloss]
     else:
         raise ValueError("Unknown loss type")
@@ -168,19 +168,19 @@ def main():
 
     if args.optim == 'SGD':
         optimizer = torch.optim.SGD(policies, args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-        optimizer4center = torch.optim.SGD(centerloss.parameters(), lr =0.5)
+        optimizer4center = torch.optim.SGD(centerloss.parameters(), lr =args.lr)
         if args.two_steps is not None:
             sub_optimizer = torch.optim.SGD(sub_policies, args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
 
 
-    elif args.optim == 'Adam':
-        print('use Adam optimizer ... ...')
-        optimizer = torch.optim.Adam(policies, args.lr, weight_decay=args.weight_decay)
-        optimizer4center = torch.optim.SGD(centerloss.parameters(), lr =0.5)
+    # elif args.optim == 'Adam':
+    #     print('use Adam optimizer ... ...')
+    #     optimizer = torch.optim.Adam(policies, args.lr, weight_decay=args.weight_decay)
+    #     optimizer4center = torch.optim.SGD(centerloss.parameters(), lr =args.lr)
 
-        if args.two_steps is not None:
-            sub_optimizer = torch.optim.Adam(sub_policies, args.lr, weight_decay=args.weight_decay)
+    #     if args.two_steps is not None:
+    #         sub_optimizer = torch.optim.Adam(sub_policies, args.lr, weight_decay=args.weight_decay)
 
 
     else:
@@ -192,10 +192,13 @@ def main():
     
 
     for epoch in range(args.start_epoch, args.epochs):
-        adjust_learning_rate(optimizer, epoch, args.lr_steps)
         if args.two_steps is not None and epoch < args.two_steps:
+            adjust_learning_rate(sub_optimizer, epoch, args.lr_steps)
+
             train(train_loader, model, criterion, sub_optimizer, optimizer4center, args.lossweight, epoch)
         else:
+            adjust_learning_rate(optimizer, epoch, args.lr_steps)
+
             train(train_loader, model, criterion, optimizer, optimizer4center, args.lossweight, epoch)
 
         # print(dir(model))
@@ -284,10 +287,10 @@ def train(train_loader, model, criterion, optimizer, optimizer4center, lossweigh
         target_var = torch.autograd.Variable(target)
 
         # compute output
-        assign_predict, output = model(input_var)
+        vlad_output, output = model(input_var)
         # loss = criterion(output, target_var)
         nll_loss = criterion[0](output, target_var)
-        center_loss = lossweight * criterion[1](target_var, assign_predict)
+        center_loss = lossweight * criterion[1](target_var, vlad_output)
         loss =  nll_loss + center_loss
 
 
@@ -350,10 +353,10 @@ def validate(val_loader, model, criterion, lossweight, iter, logger=None):
         target_var = torch.autograd.Variable(target, volatile=True)
 
         # compute output
-        assign_predict, output = model(input_var)
+        vlad_output, output = model(input_var)
 
         nll_loss = criterion[0](output, target_var)
-        center_loss = lossweight * criterion[1](target_var, assign_predict)
+        center_loss = lossweight * criterion[1](target_var, vlad_output)
         loss =  nll_loss + center_loss
 
 

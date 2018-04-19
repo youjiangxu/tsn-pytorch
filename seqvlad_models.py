@@ -1419,7 +1419,7 @@ dropout_ratio:      {}
 
 
         if not self.before_softmax:
-            self.softmax = nn.Softmax()
+            self.softmax = nn.Softmax() 
 
         self._enable_pbn = partial_bn
         if partial_bn:
@@ -1697,7 +1697,7 @@ dropout_ratio:      {}
             output = self.softmax(output)
 
         
-        return assign_predict, output.squeeze(1)
+        return vlad_out, output.squeeze(1)
 
     def _get_diff(self, input, keep_rgb=False):
         input_c = 3 if self.modality in ["RGB", "RGBDiff"] else 2
