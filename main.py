@@ -16,6 +16,10 @@ from opts import parser
 
 from collections import OrderedDict
 
+import numpy as np
+
+np.random.seed(47)
+
 best_prec1 = 0
 
 
@@ -182,10 +186,13 @@ def main():
     
 
     for epoch in range(args.start_epoch, args.epochs):
-        adjust_learning_rate(optimizer, epoch, args.lr_steps)
         if args.two_steps is not None and epoch < args.two_steps:
+            
+            adjust_learning_rate(sub_optimizer, epoch, args.lr_steps)
             train(train_loader, model, criterion, sub_optimizer, epoch)
         else:
+        
+            adjust_learning_rate(optimizer, epoch, args.lr_steps)
             train(train_loader, model, criterion, optimizer, epoch)
 
         # print(dir(model))
