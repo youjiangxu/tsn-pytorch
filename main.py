@@ -87,7 +87,7 @@ def main():
                 model_dict.update(res_state_dict) 
 
             elif args.resume_type =='same':
-                args.start_epoch = 0
+                #args.start_epoch = 0
                 
                 pretrained_dict = checkpoint['state_dict']
                 res_state_dict = init_from_tsn_model(model_dict, pretrained_dict)

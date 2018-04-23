@@ -168,7 +168,7 @@ def main():
 
     if args.optim == 'SGD':
         optimizer = torch.optim.SGD(policies, args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-        optimizer4center = torch.optim.SGD(centerloss.parameters(), lr =args.lr)
+        optimizer4center = torch.optim.SGD(centerloss.parameters(), lr=0.5)
         if args.two_steps is not None:
             sub_optimizer = torch.optim.SGD(sub_policies, args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
