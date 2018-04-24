@@ -100,6 +100,7 @@ class TSNDataSet(data.Dataset):
             average_duration = (record.num_frames - self.new_length + 1) // total_frame
             step = np.random.randint(1,5)
             offsets = np.multiply(list(range(self.timesteps)), step)
+            offsets[np.where(offsets>record.num_frames)]=record.num_frames-1
             # print(offsets)
 
             return offsets + 1
