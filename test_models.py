@@ -54,6 +54,10 @@ parser.add_argument('--activation', type=str, default=None,
 
 parser.add_argument('--seqvlad_type', default='seqvlad', choices=['seqvlad', 'bidirect', 'unshare_bidirect'],
                     help='use seqvlad_type, defaults is seqvlad')
+
+parser.add_argument('--sampling_method', default='tsn', type=str, choices=['tsn', 'random', 'reverse', 'step'],
+                    help='defint sampling method for training procedure')
+
 args = parser.parse_args()
 
 
@@ -99,6 +103,7 @@ else:
 data_loader = torch.utils.data.DataLoader(
         TSNDataSet(args.sources, args.test_list, timesteps=args.timesteps,
                    test_segments=args.test_segments,
+                   sampling_method=args.sampling_method,
                    new_length=1 if args.modality == "RGB" else 5,
                    modality=args.modality,
                    image_tmpl="image_{:05d}.jpg" if args.modality in ['RGB', 'RGBDiff'] else args.flow_prefix+"{}_{:04d}.jpg",

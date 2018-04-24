@@ -93,7 +93,14 @@ class TSNDataSet(data.Dataset):
             else:
                 offsets = np.zeros((self.timesteps,))
             if self.reverse and np.random.randint(1000) > 500:
-                offset = offsets[::-1]
+                offsets = offsets[::-1]
+        elif self.sampling_method == 'step':
+            total_frame = 40
+            assert self.timesteps == 10
+            average_duration = (record.num_frames - self.new_length + 1) // total_frame
+            step = np.random.randint(1,5)
+            offsets = np.multiply(list(range(self.timesteps)), step)
+            # print(offsets)
 
             return offsets + 1
 
@@ -102,10 +109,21 @@ class TSNDataSet(data.Dataset):
 
     def _get_val_indices(self, record):
         if record.num_frames > self.timesteps + self.new_length - 1:
-            tick = (record.num_frames - self.new_length + 1) / float(self.timesteps)
-            offsets = np.array([int(tick / 2.0 + tick * x) for x in range(self.timesteps)])
+            if self.sampling_method == 'step':
+                total_frame = 40
+                assert self.timesteps == 10
+                average_duration = (record.num_frames - self.new_length + 1) // total_frame
+                step = np.random.randint(1,5)
+                offsets = np.multiply(list(range(self.timesteps)), step)
+                # print(offsets)
+
+            else:
+
+                tick = (record.num_frames - self.new_length + 1) / float(self.timesteps)
+                offsets = np.array([int(tick / 2.0 + tick * x) for x in range(self.timesteps)])
         else:
             offsets = np.zeros((self.timesteps,))
+
         return offsets + 1
 
     def _get_test_indices(self, record):
@@ -116,12 +134,23 @@ class TSNDataSet(data.Dataset):
 
             return offsets + 1
         elif self.test_segments == 25:
-            img_index = []
-            inter_step = (record.num_frames - self.new_length - self.test_segments + 1) /float(self.timesteps)
-            for si in range(self.test_segments):
-                for i in range(self.timesteps):
-                    img_index.append(si+i*inter_step)
+            if self.sampling_method == 'step':
+                img_index = []
+                total_frame = 35
+                assert self.timesteps == 10
+                inter_step = (record.num_frames - self.new_length + 1) // total_frame
+                for si in range(self.test_segments):
+                    for i in range(self.timesteps):
+                        img_index.append((si+i)*inter_step)
 
+            else:
+                img_index = []
+                inter_step = (record.num_frames - self.new_length - self.test_segments + 1) /float(self.timesteps)
+                for si in range(self.test_segments):
+                    for i in range(self.timesteps):
+                        img_index.append(si+i*inter_step)
+
+            print(img_index)
             return np.array(img_index)+1
 
 
